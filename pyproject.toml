@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ibwapi"
+version = "0.1.0"
+description = "A low level and lightweight Python client for interacting with the Infoblox WAPI"
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "requests>=2.32.2",
+]
+
+authors = [
+    {name = "Ryan Bolger", email = "ryan-oss@xyto.cc"}
+]
+license = {text = "MIT"}
+
+[project.urls]
+Homepage = "https://github.com/rmbolger/py-ibwapi"
+Documentation = "https://github.com/rmbolger/py-ibwapi"
+Source = "https://github.com/rmbolger/py-ibwapi"
