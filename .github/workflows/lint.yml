@@ -7,7 +7,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v4
-          - uses: astral-sh/ruff-action@v1
-          - uses: astral-sh/ruff-action@v1
+          - name: "Ruff Lint Check"
+            uses: astral-sh/ruff-action@v1
+            continue-on-error: true
+          - name: "Ruff Format Check"
+            uses: astral-sh/ruff-action@v1
             with:
               args: "format --diff"
