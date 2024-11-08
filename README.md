@@ -4,11 +4,22 @@ A low level, lightweight client for interacting with the Infoblox WAPI.
 
 ```python
 >>> import ibwapi
->>> wapi = ibwapi.Client('grid.example.com', ('admin','infoblox'), wapi_version='2.13.4')
->>> resp = wapi.get('record:a', {'name:':'myhost.example.com'}, return_fields=['default','comment'])
+>>> wapi = ibwapi.Client(
+...     'grid.example.com',     # grid master FQDN
+...     ('admin','infoblox'),   # auth tuple
+...     wapi_version='2.13.4'   # WAPI version (optional)
+... )
+>>> resp = wapi.get(
+...     'record:a',                         # object type
+...     {'name:':'myhost.example.com'},     # filters
+...     return_fields=['default','comment'] # return fields
+... )
 >>> resp
 [{'_ref': 'record:a/ZG5zLmJpbmRfYSQuMS5uZXQuZHZvbHZlLmRzLGRjMSwxMC4xNy4xLjMx:myhost.example.com/Internal', 'comment': 'My Host', 'ipv4addr': '192.168.100.1', 'name': 'myhost.example.com', 'view': 'Internal'}]
->>> wapi.update(resp[0]['_ref'], {'comment':'New Comment'})
+>>> wapi.update(
+...     resp[0]['_ref'],            # object ref
+...     {'comment':'New Comment'}   # updated fields
+... )
 'record:a/ZG5zLmJpbmRfYSQuMS5uZXQuZHZvbHZlLmRzLGRjMSwxMC4xNy4xLjMx:myhost.example.com/Internal'
 ```
 
