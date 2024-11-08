@@ -10,4 +10,4 @@ jobs:
           - uses: astral-sh/ruff-action@v1
           - uses: astral-sh/ruff-action@v1
             with:
-              args: "format --check"
+              args: "format --diff"
