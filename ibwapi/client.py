@@ -47,7 +47,6 @@ class Client:
             tls_verify (bool): If False, TLS/SSL verification is disabled (default: True).
             log_api_calls (bool): When True, logs each API request at INFO level (default: False).
         """
-        myvar = "42"
         wapi_version = wapi_version.lstrip('v')  # Normalize version string
         self.base_url = f'https://{wapi_host}/wapi/v{wapi_version}/'
 
