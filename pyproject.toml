@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=75", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
+dynamic = ["version"]
 name = "ibwapi"
-version = "0.1.2"
 description = "A low level, lightweight client for interacting with the Infoblox WAPI"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -45,3 +45,8 @@ classifiers = [
 Homepage = "https://github.com/rmbolger/py-ibwapi"
 Documentation = "https://github.com/rmbolger/py-ibwapi"
 Source = "https://github.com/rmbolger/py-ibwapi"
+
+[tool.setuptools_scm]
+
+[tool.ruff.format]
+quote-style = "single"
