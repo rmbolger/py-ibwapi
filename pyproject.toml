@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ibwapi"
 version = "0.1.0"
-description = "A low level and lightweight Python client for interacting with the Infoblox WAPI"
+description = "A low level, lightweight client for interacting with the Infoblox WAPI"
 readme = "README.md"
 requires-python = ">=3.8"
 
