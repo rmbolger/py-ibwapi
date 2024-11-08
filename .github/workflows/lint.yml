@@ -1,19 +1,27 @@
 name: Check Linting and Formatting
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-    ruff_lint:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v4
-          - name: "Ruff Lint Check"
-            uses: astral-sh/ruff-action@v1
-    ruff_format:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v4
-          - name: "Ruff Format Check"
-            uses: astral-sh/ruff-action@v1
-            with:
-                args: "format --diff"
+
+  lint:
+    name: "Lint Check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Ruff Lint Check"
+        uses: astral-sh/ruff-action@v1
+
+  format:
+    name: "Formatting Checking"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Ruff Format Check"
+        uses: astral-sh/ruff-action@v1
+        with:
+          args: "format --diff"
