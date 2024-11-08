@@ -15,7 +15,7 @@ jobs:
         uses: astral-sh/ruff-action@v1
 
   format:
-    name: "Formatting Checking"
+    name: "Format Check"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
         path: dist/
 
   sign:
-    name: Sign with Sigstore
+    name: Sign and Attach Release Artifacts
     needs:
     - build
     runs-on: ubuntu-latest
@@ -69,14 +69,6 @@ jobs:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
-    # - name: Create GitHub Release
-    #   env:
-    #     GITHUB_TOKEN: ${{ github.token }}
-    #   run: >-
-    #     gh release create
-    #     '${{ github.ref_name }}'
-    #     --repo '${{ github.repository }}'
-    #     --notes ""
     - name: Upload artifact signatures to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -112,7 +104,7 @@ jobs:
   #   name: Publish to TestPyPI
   #   if: github.event.action == 'prereleased'
   #   needs:
-  #   - build
+  #   - sign
   #   runs-on: ubuntu-latest
   #   environment:
   #     name: testpypi
