@@ -20,7 +20,7 @@ authors = [
 keywords = ['infoblox','nios','wapi','ddi','rest']
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",

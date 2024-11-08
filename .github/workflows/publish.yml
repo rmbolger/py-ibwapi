@@ -80,25 +80,25 @@ jobs:
         '${{ github.event.release.tag_name }}' dist/**
         --repo '${{ github.repository }}'
 
-  # publish-to-pypi:
-  #   name: Publish to PyPI
-  #   if: github.event.action == 'released'
-  #   needs:
-  #   - sign
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: pypi
-  #     url: https://pypi.org/p/ibwapi
-  #   permissions:
-  #     id-token: write
-  #   steps:
-  #   - name: Download the dists
-  #     uses: actions/download-artifact@v4
-  #     with:
-  #       name: python-package-distributions
-  #       path: dist/
-  #   - name: Publish to PyPI
-  #     uses: pypa/gh-action-pypi-publish@release/v1
+  publish-to-pypi:
+    name: Publish to PyPI
+    if: github.event.action == 'released'
+    needs:
+    - sign
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ibwapi
+    permissions:
+      id-token: write
+    steps:
+    - name: Download the dists
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-to-testpypi:
     name: Publish to TestPyPI
