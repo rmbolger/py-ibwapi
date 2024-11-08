@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ibwapi"
-version = "0.1.1"
+version = "0.1.2"
 description = "A low level, lightweight client for interacting with the Infoblox WAPI"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -16,7 +16,30 @@ dependencies = [
 authors = [
     {name = "Ryan Bolger", email = "ryan-oss@xyto.cc"}
 ]
-license = {text = "MIT"}
+
+keywords = ['infoblox','nios','wapi','ddi','rest']
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Environment :: Web Environment",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Topic :: System :: Networking"
+]
 
 [project.urls]
 Homepage = "https://github.com/rmbolger/py-ibwapi"

@@ -31,4 +31,4 @@ ibwapi is available on PyPI:
 $ python -m pip install ibwapi
 ```
 
-ibwapi relies heavily on the [Requests](https://pypi.org/project/requests/) and will generally follow its supported Python versions which is currently 3.8+.
+This project depends on [Requests](https://requests.readthedocs.io/en/latest/), which is licensed under the Apache License 2.0. It will generally follow the Python versions supported by Requests which is currently 3.8+.
