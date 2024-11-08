@@ -4,9 +4,10 @@ import logging
 import requests
 import urllib3
 
-from .exceptions import WAPIError,LimitExceededError
+from .exceptions import WAPIError, LimitExceededError
 
 logger = logging.getLogger(__name__)
+
 
 class Client:
     """
@@ -28,12 +29,14 @@ class Client:
         log_api_calls (bool): When True, logs API call details at the INFO level (default: False).
     """
 
-    def __init__(self,
-                 wapi_host: str,
-                 auth,
-                 wapi_version: str = '2.12',   # NIOS 8.6.0 EOL 2024-04-30
-                 tls_verify: bool = True,
-                 log_api_calls: bool = False):
+    def __init__(
+        self,
+        wapi_host: str,
+        auth,
+        wapi_version: str = '2.12',  # NIOS 8.6.0 EOL 2024-04-30
+        tls_verify: bool = True,
+        log_api_calls: bool = False,
+    ):
         """
         Initializes the Infoblox WAPI client, setting up the session and base URL.
 
@@ -45,7 +48,7 @@ class Client:
             log_api_calls (bool): When True, logs each API request at INFO level (default: False).
         """
         wapi_version = wapi_version.lstrip('v')  # Normalize version string
-        self.base_url = f"https://{wapi_host}/wapi/v{wapi_version}/"
+        self.base_url = f'https://{wapi_host}/wapi/v{wapi_version}/'
 
         self.session = requests.Session()
         self.session.auth = auth
@@ -77,7 +80,15 @@ class Client:
         if not value:
             urllib3.disable_warnings()
 
-    def get(self, obj: str, data: dict=None, return_fields: list=[], paging:bool=True, page_size:int=1000, max_results:int=None):
+    def get(
+        self,
+        obj: str,
+        data: dict = None,
+        return_fields: list = None,
+        paging: bool = True,
+        page_size: int = 1000,
+        max_results: int = None,
+    ):
         """
         Retrieves (reads) a WAPI object by its type or reference.
 
@@ -87,23 +98,27 @@ class Client:
             return_fields (list): Fields to return in the response. 'default' includes base fields.
             paging (bool): Whether to use paging.
             page_size (int): Number of records to return per page.
-            max_results (int): Maximum results to return. Negative values raise an error if results exceed the absolute value.
+            max_results (int): Maximum results to return. Negative values raise an error if
+                               results exceed the absolute value.
 
         Returns:
             list: The list of JSON objects representing the requested data.
 
         Raises:
             ValueError: If paging or max_results parameters are invalid.
-            LimitExceededError: If a negative max_results is specified and the result set exceeds that limit.
+            LimitExceededError: If a negative max_results is specified and the result set exceeds
+                                that limit.
             WAPIError: If a request error is returned by the WAPI.
         """
         # sanity check numeric params
         if paging and page_size <= 0:
-            raise ValueError("page_size must be a positive integer when paging is enabled")
+            raise ValueError(
+                'page_size must be a positive integer when paging is enabled'
+            )
         if max_results == 0:
-            raise ValueError("max_results cannot be zero")
+            raise ValueError('max_results cannot be zero')
 
-        url = f"{self.base_url}{obj}"
+        url = f'{self.base_url}{obj}'
 
         # start building query params
         query_params = data or dict()
@@ -122,20 +137,20 @@ class Client:
                 if max_results > 0 and max_results < page_size:
                     page_size = max_results
                 elif max_results < 0 and abs(max_results) <= page_size:
-                    page_size = abs(max_results)+1
+                    page_size = abs(max_results) + 1
             query_params['_max_results'] = page_size
 
             # make the first call
             results = []
-            rdata = self._call_wapi(url,query_params)
+            rdata = self._call_wapi(url, query_params)
             results.extend(rdata.get('result'))
 
             # loop the rest of the pages
-            while ('next_page_id' in rdata
-                   and (max_results is None or len(results) < abs(max_results))
-                   ):
-                query_params = {'_page_id':rdata['next_page_id']}
-                rdata = self._call_wapi(url,query_params)
+            while 'next_page_id' in rdata and (
+                max_results is None or len(results) < abs(max_results)
+            ):
+                query_params = {'_page_id': rdata['next_page_id']}
+                rdata = self._call_wapi(url, query_params)
                 results.extend(rdata.get('result'))
 
             # Trim or error as necessary if the result set is larger than max_results
@@ -144,9 +159,7 @@ class Client:
                     raise LimitExceededError(abs(max_results), len(results))
                 elif max_results > 0 and len(results) > max_results:
                     results = results[:max_results]
-
         else:
-
             if max_results is not None:
                 # with no paging, we can use max_results as-is if specified
                 query_params['_max_results'] = max_results
@@ -155,14 +168,15 @@ class Client:
 
         return results
 
-    def new(self, obj: str, data: dict, return_fields: list=[]):
+    def new(self, obj: str, data: dict, return_fields: list = None):
         """
         Creates a new WAPI object.
 
         Args:
             obj (str): The type of object to create (e.g., "record:host").
             data (dict): A dictionary of fields/values to include in the new object.
-            return_fields (list): Fields to return on the new object. 'default' includes base fields.
+            return_fields (list): Fields to return on the new object. 'default' includes base
+                                  fields.
 
         Returns:
             dict: The created object data.
@@ -170,21 +184,22 @@ class Client:
         Raises:
             WAPIError: If a request error occurs.
         """
-        url = f"{self.base_url}{obj}"
+        url = f'{self.base_url}{obj}'
 
         query_params = self._build_return_fields(return_fields)
 
         rdata = self._call_wapi(url, query_params, data, method='POST')
         return rdata
 
-    def update(self, ref: str, data: dict, return_fields: list=[]):
+    def update(self, ref: str, data: dict, return_fields: list = None):
         """
         Updates an existing WAPI object by its reference.
 
         Args:
             ref (str): The '_ref' ID of the object to update.
             data (dict): Fields/values to update.
-            return_fields (list): Fields to return on the updated object. 'default' includes base fields.
+            return_fields (list): Fields to return on the updated object. 'default' includes base
+                                  fields.
 
         Returns:
             dict: The updated object data.
@@ -192,14 +207,14 @@ class Client:
         Raises:
             WAPIError: If a request error occurs.
         """
-        url = f"{self.base_url}{ref}"
+        url = f'{self.base_url}{ref}'
 
         query_params = self._build_return_fields(return_fields)
 
         rdata = self._call_wapi(url, query_params, data, method='PUT')
         return rdata
 
-    def delete(self, ref: str, delete_args: dict={}):
+    def delete(self, ref: str, delete_args: dict = None):
         """
         Deletes an existing WAPI object by its reference ID.
 
@@ -213,7 +228,7 @@ class Client:
         Raises:
             WAPIError: If a request error occurs.
         """
-        url = f"{self.base_url}{ref}"
+        url = f'{self.base_url}{ref}'
 
         rdata = self._call_wapi(url, delete_args, method='DELETE')
         return rdata
@@ -232,11 +247,17 @@ class Client:
         Raises:
             WAPIError: If a request error occurs.
         """
-        url = f"{self.base_url}request"
+        url = f'{self.base_url}request'
         rdata = self._call_wapi(url, body_data=payload, method='POST')
         return rdata
 
-    def _call_wapi(self, url: str, query_params: dict={}, body_data: dict={}, method: str = "GET"):
+    def _call_wapi(
+        self,
+        url: str,
+        query_params: dict = None,
+        body_data: dict = None,
+        method: str = 'GET',
+    ):
         """
         Performs a raw HTTP request with the current session.
 
@@ -249,8 +270,12 @@ class Client:
         Returns:
             dict: The JSON response data.
         """
+        if query_params is None:
+            query_params = {}
+        if body_data is None:
+            body_data = {}
         if self.log_api_calls:
-            logger.info(f"{method} {url} - {query_params} - {body_data}")
+            logger.info('%s %s - %s - %s', method, url, query_params, body_data)
 
         request_args = {'params': query_params} if query_params else {}
 
@@ -264,7 +289,7 @@ class Client:
         except requests.exceptions.HTTPError as http_err:
             raise WAPIError(resp) from http_err
 
-    def _build_return_fields(self, return_fields:list=[]):
+    def _build_return_fields(self, return_fields: list = None):
         """
         Constructs return field parameters for requests.
 
