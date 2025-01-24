@@ -308,3 +308,33 @@ class Client:
                 query_params['_return_fields'] = ','.join(return_fields)
 
         return query_params
+
+    def call_func(
+        self,
+        ref: str,
+        func_name: str,
+        func_args: dict = None,
+    ):
+        """
+        Invoke a WAPI function.
+
+        Args:
+            ref (str): The reference ID of the object the function is associated with.
+                       For fileop functions, this is literally 'fileop'.
+            func_name (str): The name of the function to call.
+            func_args (dict): Input field key/value pairs necessary to run this function.
+            return_fields (list): Fields to return on the updated object. 'default' includes base
+                                  fields.
+
+        Returns:
+            dict: The function response data.
+
+        Raises:
+            WAPIError: If a request error occurs.
+        """
+        url = f'{self.base_url}{ref}'
+
+        query_params = {'_function': func_name}
+
+        rdata = self._call_wapi(url, query_params, func_args, method='POST')
+        return rdata
