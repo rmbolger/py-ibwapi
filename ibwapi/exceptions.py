@@ -12,9 +12,9 @@ class WAPIError(Exception):
             error_text = err.get('text', None)
         except ValueError:
             # If response is not JSON, use a generic error message
-            error_message = 'Unknown error (non-JSON response)'
-            error_code = err.response.status_code
-            error_text = err.response.text
+            error_message = f"Unknown error (non-JSON response): {response.text}"
+            error_code = response.status_code
+            error_text = response.text
 
         self.status_code = response.status_code
         self.error_message = error_message
