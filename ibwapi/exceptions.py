@@ -11,8 +11,12 @@ class WAPIError(Exception):
             error_code = err.get('code', None)
             error_text = err.get('text', None)
         except ValueError:
-            # If response is not JSON, use a generic error message
-            error_message = f'Unknown error (non-JSON response): {response.text}'
+            if response.status_code == 401:
+                # the most common non-JSON error is permissions or credential related
+                error_message = 'Invalid credentials or insufficient permissions for the given credentials.'
+            else:
+                # use a generic error message
+                error_message = f'Unknown error (non-JSON response): {response.text}'
             error_code = response.status_code
             error_text = response.text
 
