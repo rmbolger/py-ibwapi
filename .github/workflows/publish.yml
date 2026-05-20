@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: "3.x"
     - name: Install pypa/build
@@ -44,47 +44,48 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: python3 -m build
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: python-package-distributions
         path: dist/
 
-  sign:
-    name: Sign and Attach Release Artifacts
-    needs:
-    - build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-    - name: Download the dists
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-    - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.0.0
-      with:
-        inputs: >-
-          ./dist/*.tar.gz
-          ./dist/*.whl
-    - name: Upload artifact signatures to GitHub Release
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      # Upload to GitHub Release using the `gh` CLI.
-      # `dist/` contains the built packages, and the
-      # sigstore-produced signatures and certificates.
-      run: >-
-        gh release upload
-        '${{ github.event.release.tag_name }}' dist/**
-        --repo '${{ github.repository }}'
+  # Explicit signing step no longer necessary because gh-action-pypi-publish now does it by default
+  # sign:
+  #   name: Sign and Attach Release Artifacts
+  #   needs:
+  #   - build
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #     id-token: write
+  #   steps:
+  #   - name: Download the dists
+  #     uses: actions/download-artifact@v8
+  #     with:
+  #       name: python-package-distributions
+  #       path: dist/
+  #   - name: Sign the dists with Sigstore
+  #     uses: sigstore/gh-action-sigstore-python@v3.0.0
+  #     with:
+  #       inputs: >-
+  #         ./dist/*.tar.gz
+  #         ./dist/*.whl
+  #   - name: Upload artifact signatures to GitHub Release
+  #     env:
+  #       GITHUB_TOKEN: ${{ github.token }}
+  #     # Upload to GitHub Release using the `gh` CLI.
+  #     # `dist/` contains the built packages, and the
+  #     # sigstore-produced signatures and certificates.
+  #     run: >-
+  #       gh release upload
+  #       '${{ github.event.release.tag_name }}' dist/**
+  #       --repo '${{ github.repository }}'
 
   publish-to-pypi:
     name: Publish to PyPI
     if: github.event.action == 'released'
     needs:
-    - sign
+    - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -93,7 +94,7 @@ jobs:
       id-token: write
     steps:
     - name: Download the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: python-package-distributions
         path: dist/
@@ -104,7 +105,7 @@ jobs:
     name: Publish to TestPyPI
     if: github.event.action == 'prereleased'
     needs:
-    - sign
+    - build
     runs-on: ubuntu-latest
     environment:
       name: testpypi
@@ -113,7 +114,7 @@ jobs:
       id-token: write
     steps:
     - name: Download the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: python-package-distributions
         path: dist/
