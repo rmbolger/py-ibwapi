@@ -12,16 +12,16 @@ jobs:
     name: "Lint Check"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: "Ruff Lint Check"
-        uses: astral-sh/ruff-action@v1
+        uses: astral-sh/ruff-action@v4
 
   format:
     name: "Formatting Checking"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: "Ruff Format Check"
-        uses: astral-sh/ruff-action@v1
+        uses: astral-sh/ruff-action@v4
         with:
           args: "format --diff"
