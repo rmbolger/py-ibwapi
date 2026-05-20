@@ -372,5 +372,7 @@ class Client:
 
         query_params = {'_function': func_name}
 
-        rdata = self._call_wapi(url, query_params, func_args, method='POST', timeout=timeout)
+        rdata = self._call_wapi(
+            url, query_params, func_args, method='POST', timeout=timeout
+        )
         return rdata
