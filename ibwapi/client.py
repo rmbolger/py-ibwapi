@@ -27,6 +27,9 @@ class Client:
         wapi_version (str): The version of the Infoblox WAPI to use (default: '2.12').
         tls_verify (bool): Whether to verify the TLS/SSL certificate (default: True).
         log_api_calls (bool): When True, logs API call details at the INFO level (default: False).
+        timeout (float or tuple): (optional) How many seconds to wait for the server to send
+            data before giving up, as a float, or a (connect timeout, read timeout) tuple.
+            Applied to all calls unless overridden per call.
     """
 
     def __init__(
@@ -36,6 +39,7 @@ class Client:
         wapi_version: str = '2.12',  # NIOS 8.6.0 EOL 2024-04-30
         tls_verify: bool = True,
         log_api_calls: bool = False,
+        timeout=None,
     ):
         """
         Initializes the Infoblox WAPI client, setting up the session and base URL.
@@ -46,6 +50,9 @@ class Client:
             wapi_version (str): The WAPI version to use (default: '2.12').
             tls_verify (bool): If False, TLS/SSL verification is disabled (default: True).
             log_api_calls (bool): When True, logs each API request at INFO level (default: False).
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Applied to all calls unless overridden per call.
         """
         wapi_version = wapi_version.lstrip('v')  # Normalize version string
         self.base_url = f'https://{wapi_host}/wapi/v{wapi_version}/'
@@ -57,6 +64,7 @@ class Client:
             urllib3.disable_warnings()
 
         self.log_api_calls = log_api_calls
+        self.timeout = timeout
 
     @property
     def tls_verify(self) -> bool:
@@ -88,6 +96,7 @@ class Client:
         paging: bool = True,
         page_size: int = 1000,
         max_results: int = None,
+        timeout=None,
     ):
         """
         Retrieves (reads) a WAPI object by its type or reference.
@@ -100,6 +109,9 @@ class Client:
             page_size (int): Number of records to return per page.
             max_results (int): Maximum results to return. Negative values raise an error if
                                results exceed the absolute value.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             list: The list of JSON objects representing the requested data.
@@ -142,7 +154,7 @@ class Client:
 
             # make the first call
             results = []
-            rdata = self._call_wapi(url, query_params)
+            rdata = self._call_wapi(url, query_params, timeout=timeout)
             results.extend(rdata.get('result'))
 
             # loop the rest of the pages
@@ -150,7 +162,7 @@ class Client:
                 max_results is None or len(results) < abs(max_results)
             ):
                 query_params = {'_page_id': rdata['next_page_id']}
-                rdata = self._call_wapi(url, query_params)
+                rdata = self._call_wapi(url, query_params, timeout=timeout)
                 results.extend(rdata.get('result'))
 
             # Trim or error as necessary if the result set is larger than max_results
@@ -164,11 +176,11 @@ class Client:
                 # with no paging, we can use max_results as-is if specified
                 query_params['_max_results'] = max_results
 
-            results = self._call_wapi(url, query_params)
+            results = self._call_wapi(url, query_params, timeout=timeout)
 
         return results
 
-    def new(self, obj: str, data: dict, return_fields: list = None):
+    def new(self, obj: str, data: dict, return_fields: list = None, timeout=None):
         """
         Creates a new WAPI object.
 
@@ -177,6 +189,9 @@ class Client:
             data (dict): A dictionary of fields/values to include in the new object.
             return_fields (list): Fields to return on the new object. 'default' includes base
                                   fields.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             dict: The created object data.
@@ -188,10 +203,10 @@ class Client:
 
         query_params = self._build_return_fields(return_fields)
 
-        rdata = self._call_wapi(url, query_params, data, method='POST')
+        rdata = self._call_wapi(url, query_params, data, method='POST', timeout=timeout)
         return rdata
 
-    def update(self, ref: str, data: dict, return_fields: list = None):
+    def update(self, ref: str, data: dict, return_fields: list = None, timeout=None):
         """
         Updates an existing WAPI object by its reference.
 
@@ -200,6 +215,9 @@ class Client:
             data (dict): Fields/values to update.
             return_fields (list): Fields to return on the updated object. 'default' includes base
                                   fields.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             dict: The updated object data.
@@ -211,16 +229,19 @@ class Client:
 
         query_params = self._build_return_fields(return_fields)
 
-        rdata = self._call_wapi(url, query_params, data, method='PUT')
+        rdata = self._call_wapi(url, query_params, data, method='PUT', timeout=timeout)
         return rdata
 
-    def delete(self, ref: str, delete_args: dict = None):
+    def delete(self, ref: str, delete_args: dict = None, timeout=None):
         """
         Deletes an existing WAPI object by its reference ID.
 
         Args:
             ref (str): The reference ID of the object to delete.
             delete_args (dict): Additional arguments related to this delete request.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             dict: The deletion response data.
@@ -230,16 +251,19 @@ class Client:
         """
         url = f'{self.base_url}{ref}'
 
-        rdata = self._call_wapi(url, delete_args, method='DELETE')
+        rdata = self._call_wapi(url, delete_args, method='DELETE', timeout=timeout)
         return rdata
 
-    def request(self, payload):
+    def request(self, payload, timeout=None):
         """
         Send a generic WAPI handler request using the 'request' object. This allows for multiple
         operations in a single call. See the WAPI docs for details.
 
         Args:
             payload: A dict or list of dicts containing request objects.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             dict: The response data from the request.
@@ -248,7 +272,7 @@ class Client:
             WAPIError: If a request error occurs.
         """
         url = f'{self.base_url}request'
-        rdata = self._call_wapi(url, body_data=payload, method='POST')
+        rdata = self._call_wapi(url, body_data=payload, method='POST', timeout=timeout)
         return rdata
 
     def _call_wapi(
@@ -257,6 +281,7 @@ class Client:
         query_params: dict = None,
         body_data: dict = None,
         method: str = 'GET',
+        timeout=None,
     ):
         """
         Performs a raw HTTP request with the current session.
@@ -266,6 +291,9 @@ class Client:
             query_params (dict): Query parameters for the request.
             body_data (dict): JSON body data for non-GET requests.
             method (str): HTTP method for the request (default: "GET").
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             dict: The JSON response data.
@@ -281,6 +309,10 @@ class Client:
 
         if method != 'GET' and body_data:
             request_args['json'] = body_data
+
+        request_timeout = self.timeout if timeout is None else timeout
+        if request_timeout is not None:
+            request_args['timeout'] = request_timeout
 
         try:
             resp = self.session.request(method, url, **request_args)
@@ -314,6 +346,7 @@ class Client:
         ref: str,
         func_name: str,
         func_args: dict = None,
+        timeout=None,
     ):
         """
         Invoke a WAPI function.
@@ -325,6 +358,9 @@ class Client:
             func_args (dict): Input field key/value pairs necessary to run this function.
             return_fields (list): Fields to return on the updated object. 'default' includes base
                                   fields.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
 
         Returns:
             dict: The function response data.
@@ -336,5 +372,5 @@ class Client:
 
         query_params = {'_function': func_name}
 
-        rdata = self._call_wapi(url, query_params, func_args, method='POST')
+        rdata = self._call_wapi(url, query_params, func_args, method='POST', timeout=timeout)
         return rdata
