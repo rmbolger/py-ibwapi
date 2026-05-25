@@ -55,6 +55,8 @@ class Client:
                 tuple. Applied to all calls unless overridden per call.
         """
         wapi_version = wapi_version.lstrip('v')  # Normalize version string
+        self._wapi_host = wapi_host
+        self._wapi_version = wapi_version
         self.base_url = f'https://{wapi_host}/wapi/v{wapi_version}/'
 
         self.session = requests.Session()
@@ -376,3 +378,63 @@ class Client:
             url, query_params, func_args, method='POST', timeout=timeout
         )
         return rdata
+
+    def func_upload(
+        self,
+        func_name: str,
+        file_path: str,
+        func_args: dict = None,
+        ref: str = 'fileop',
+        no_override_host: bool = False,
+        timeout=None,
+    ):
+        """
+        Invoke a WAPI file upload function.
+
+        Args:
+            func_name (str): The name of the upload function to call.
+            file_path (str): The path to the file that will be uploaded.
+            func_args (dict): Input field key/value paris necessary to run this function.
+            ref (str): The reference ID of the object the function is associated with. Defaults to
+                       'fileop'.
+            no_override_host (bool): In many WAPI versions, the server provided transfer URL uses
+                                     the IP address instead of the DNS name the function call was
+                                     made against. By default this function will override that IP
+                                     address with the original DNS name if necessary to avoid
+                                     potential TLS errors. When True, this parameter disables that
+                                     override and the transfer URL will be used as-is.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
+
+        Returns:
+            dict: The function response data.
+
+        Raises:
+            WAPIError: If a request error occurs.
+        """
+        # initialize the upload
+        resp = self.call_func('fileop', 'uploadinit', timeout=timeout)
+        token, upload_url = resp['token'], resp['url']
+
+        # override the transfer host if necessary
+        u = urllib3.util.parse_url(upload_url)
+        if u.host != self._wapi_host and not no_override_host:
+            logger.debug('Replacing %s with %s in upload URL.', u.host, self._wapi_host)
+            upload_url = upload_url.replace(f'/{u.host}', f'/{self._wapi_host}')
+
+        # upload the file
+        with open(file_path, 'rb') as f:
+            try:
+                resp = self.session.post(upload_url, files={'file': f}, timeout=timeout)
+                resp.raise_for_status()
+            except requests.exceptions.HTTPError as http_err:
+                raise WAPIError(resp) from http_err
+
+        # call the requested function with the upload token
+        if func_args is None:
+            func_args = {'token': token}
+        else:
+            func_args['token'] = token
+        resp = self.call_func(ref, func_name, func_args=func_args, timeout=timeout)
+        return resp
