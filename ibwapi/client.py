@@ -90,6 +90,7 @@ class Client:
         if not value:
             urllib3.disable_warnings()
 
+
     def get(
         self,
         obj: str,
@@ -182,6 +183,7 @@ class Client:
 
         return results
 
+
     def new(self, obj: str, data: dict, return_fields: list = None, timeout=None):
         """
         Creates a new WAPI object.
@@ -207,6 +209,7 @@ class Client:
 
         rdata = self._call_wapi(url, query_params, data, method='POST', timeout=timeout)
         return rdata
+
 
     def update(self, ref: str, data: dict, return_fields: list = None, timeout=None):
         """
@@ -234,6 +237,7 @@ class Client:
         rdata = self._call_wapi(url, query_params, data, method='PUT', timeout=timeout)
         return rdata
 
+
     def delete(self, ref: str, delete_args: dict = None, timeout=None):
         """
         Deletes an existing WAPI object by its reference ID.
@@ -256,6 +260,7 @@ class Client:
         rdata = self._call_wapi(url, delete_args, method='DELETE', timeout=timeout)
         return rdata
 
+
     def request(self, payload, timeout=None):
         """
         Send a generic WAPI handler request using the 'request' object. This allows for multiple
@@ -276,6 +281,7 @@ class Client:
         url = f'{self.base_url}request'
         rdata = self._call_wapi(url, body_data=payload, method='POST', timeout=timeout)
         return rdata
+
 
     def _call_wapi(
         self,
@@ -323,6 +329,7 @@ class Client:
         except requests.exceptions.HTTPError as http_err:
             raise WAPIError(resp) from http_err
 
+
     def _build_return_fields(self, return_fields: list = None):
         """
         Constructs return field parameters for requests.
@@ -342,6 +349,7 @@ class Client:
                 query_params['_return_fields'] = ','.join(return_fields)
 
         return query_params
+
 
     def call_func(
         self,
@@ -378,6 +386,7 @@ class Client:
             url, query_params, func_args, method='POST', timeout=timeout
         )
         return rdata
+
 
     def func_upload(
         self,
@@ -438,3 +447,60 @@ class Client:
             func_args['token'] = token
         resp = self.call_func(ref, func_name, func_args=func_args, timeout=timeout)
         return resp
+
+
+    def func_download(
+        self,
+        func_name: str,
+        download_path: str,
+        func_args: dict = None,
+        ref: str = 'fileop',
+        no_override_host: bool = False,
+        timeout=None,
+    ):
+        """
+        Invoke a WAPI file download function.
+
+        Args:
+            func_name (str): The name of the download function to call.
+            download_path (str): The path where the downloaded file will be saved.
+            func_args (dict): Input field key/value paris necessary to run this function.
+            ref (str): The reference ID of the object the function is associated with. Defaults to
+                       'fileop'.
+            no_override_host (bool): In many WAPI versions, the server provided transfer URL uses
+                                     the IP address instead of the DNS name the function call was
+                                     made against. By default this function will override that IP
+                                     address with the original DNS name if necessary to avoid
+                                     potential TLS errors. When True, this parameter disables that
+                                     override and the transfer URL will be used as-is.
+            timeout (float or tuple): (optional) How many seconds to wait for the server to
+                send data before giving up, as a float, or a (connect timeout, read timeout)
+                tuple. Overrides the Client default timeout for this call.
+        """
+        # call the function to get the download token and URL
+        resp = self.call_func(ref, func_name, func_args=func_args, timeout=timeout)
+        token, download_url = resp['token'], resp['url']
+
+        # override the transfer host if necessary
+        u = urllib3.util.parse_url(download_url)
+        if u.host != self._wapi_host and not no_override_host:
+            logger.debug('Replacing %s with %s in download URL.', u.host, self._wapi_host)
+            download_url = download_url.replace(f'/{u.host}', f'/{self._wapi_host}')
+
+        # download the file
+        try:
+            resp = self.session.get(
+                download_url,
+                headers={'Content-Type': 'application/force-download'},
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            with open(download_path, 'wb') as f:
+                f.write(resp.content)
+
+        except requests.exceptions.HTTPError as http_err:
+            raise WAPIError(resp) from http_err
+
+        finally:
+            # notify the server that the download is complete
+            self.call_func(ref, 'downloadcomplete', func_args={'token': token}, timeout=timeout)
