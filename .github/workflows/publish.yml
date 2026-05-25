@@ -49,43 +49,33 @@ jobs:
         name: python-package-distributions
         path: dist/
 
-  # Explicit signing step no longer necessary because gh-action-pypi-publish now does it by default
-  # sign:
-  #   name: Sign and Attach Release Artifacts
-  #   needs:
-  #   - build
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: write
-  #     id-token: write
-  #   steps:
-  #   - name: Download the dists
-  #     uses: actions/download-artifact@v8
-  #     with:
-  #       name: python-package-distributions
-  #       path: dist/
-  #   - name: Sign the dists with Sigstore
-  #     uses: sigstore/gh-action-sigstore-python@v3.0.0
-  #     with:
-  #       inputs: >-
-  #         ./dist/*.tar.gz
-  #         ./dist/*.whl
-  #   - name: Upload artifact signatures to GitHub Release
-  #     env:
-  #       GITHUB_TOKEN: ${{ github.token }}
-  #     # Upload to GitHub Release using the `gh` CLI.
-  #     # `dist/` contains the built packages, and the
-  #     # sigstore-produced signatures and certificates.
-  #     run: >-
-  #       gh release upload
-  #       '${{ github.event.release.tag_name }}' dist/**
-  #       --repo '${{ github.repository }}'
+  upload-release-assets:
+    name: Upload Release Assets
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download the dists
+      uses: actions/download-artifact@v8
+      with:
+        name: python-package-distributions
+        path: dist/
+    - name: Upload dists to GitHub Release
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: ${{ github.event.release.tag_name }}
+        files: dist/*
+        overwrite_files: true
+        fail_on_unmatched_files: true
 
   publish-to-pypi:
     name: Publish to PyPI
     if: github.event.action == 'released'
     needs:
     - build
+    - upload-release-assets
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -106,6 +96,7 @@ jobs:
     if: github.event.action == 'prereleased'
     needs:
     - build
+    - upload-release-assets
     runs-on: ubuntu-latest
     environment:
       name: testpypi
