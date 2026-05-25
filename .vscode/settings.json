@@ -1,0 +1,13 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "files.trimFinalNewlines": true,
+    "files.insertFinalNewline": true,
+    "[python]": {
+        "files.eol": "\n",
+        "editor.tabSize": 4
+    },
+    "[github-actions-workflow]": {
+        "files.eol": "\n",
+        "editor.tabSize": 2
+    }
+}
