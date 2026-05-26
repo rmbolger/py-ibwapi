@@ -35,3 +35,14 @@ class LimitExceededError(Exception):
         super().__init__(
             f'Result set of {actual_results} exceeds the max_results limit of {max_results}.'
         )
+
+
+class GridMasterRedirectError(Exception):
+    """Raised when WAPI host responds with meta refresh to a different grid master."""
+
+    def __init__(self, configured_host: str, redirect_host: str):
+        super().__init__(
+            f'Configured wapi_host "{configured_host}" is redirecting to '
+            f'"{redirect_host}" via HTML meta refresh. Update wapi_host or set '
+            'raise_on_redirect=False to follow the redirect automatically.'
+        )

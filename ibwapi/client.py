@@ -1,10 +1,12 @@
 """Contains the Client class for interacting with the Infoblox NIOS WAPI."""
 
 import logging
+import re
 import requests
 import urllib3
+from urllib.parse import urlsplit, urlunsplit
 
-from .exceptions import WAPIError, LimitExceededError
+from .exceptions import WAPIError, LimitExceededError, GridMasterRedirectError
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,9 @@ class Client:
         wapi_version (str): The version of the Infoblox WAPI to use (default: '2.12').
         tls_verify (bool): Whether to verify the TLS/SSL certificate (default: True).
         log_api_calls (bool): When True, logs API call details at the INFO level (default: False).
+        raise_on_redirect (bool): When True, raise an exception if the server returns a
+            meta refresh page pointing to a different host instead of following it.
+            Default is False.
         timeout (float or tuple): (optional) How many seconds to wait for the server to send
             data before giving up, as a float, or a (connect timeout, read timeout) tuple.
             Applied to all calls unless overridden per call.
@@ -39,6 +44,7 @@ class Client:
         wapi_version: str = '2.12',  # NIOS 8.6.0 EOL 2024-04-30
         tls_verify: bool = True,
         log_api_calls: bool = False,
+        raise_on_redirect: bool = False,
         timeout=None,
     ):
         """
@@ -50,6 +56,9 @@ class Client:
             wapi_version (str): The WAPI version to use (default: '2.12').
             tls_verify (bool): If False, TLS/SSL verification is disabled (default: True).
             log_api_calls (bool): When True, logs each API request at INFO level (default: False).
+            raise_on_redirect (bool): When True, raise an exception if the server returns a
+                meta refresh page pointing to a different host instead of following it.
+                Default is False.
             timeout (float or tuple): (optional) How many seconds to wait for the server to
                 send data before giving up, as a float, or a (connect timeout, read timeout)
                 tuple. Applied to all calls unless overridden per call.
@@ -66,6 +75,7 @@ class Client:
             urllib3.disable_warnings()
 
         self.log_api_calls = log_api_calls
+        self.raise_on_redirect = raise_on_redirect
         self.timeout = timeout
 
     @property
@@ -319,9 +329,92 @@ class Client:
         try:
             resp = self.session.request(method, url, **request_args)
             resp.raise_for_status()
+
+            # Certain NIOS nodes can return HTML with a meta refresh that points
+            # at the active grid master instead of returning JSON.
+            refresh_target = self._get_meta_refresh_target(resp)
+            if refresh_target:
+                gm_host, gm_port = refresh_target
+                gm_target = f'{gm_host}:{gm_port}' if gm_port else gm_host
+
+                if self.raise_on_redirect:
+                    raise GridMasterRedirectError(
+                        configured_host=self._wapi_host,
+                        redirect_host=gm_target,
+                    )
+
+                retry_url = self._replace_url_host(url, gm_host, gm_port)
+                if retry_url:
+                    logger.info(
+                        'Retrying WAPI call against grid master URL: %s', retry_url
+                    )
+                    resp = self.session.request(method, retry_url, **request_args)
+                    resp.raise_for_status()
+
             return resp.json()
         except requests.exceptions.HTTPError as http_err:
             raise WAPIError(resp) from http_err
+
+    def _get_meta_refresh_target(self, response):
+        """
+        If response contains an HTML meta refresh with a URL, return a tuple of
+        (host, optional port) extracted from the refresh target.
+        """
+        content_type = response.headers.get('Content-Type', '').lower()
+        body = response.text or ''
+        logger.info('Checking for meta refresh in response with Content-Type: %s', content_type)
+        logger.info('Response body: %s', body)
+
+        if 'html' not in content_type and '<meta' not in body.lower():
+            logger.info('No HTML content or meta tag found in response; skipping meta refresh check.')
+            return None
+
+        # Example: CONTENT="0; URL=https://192.0.2.1"
+        match = re.search(
+            r'CONTENT\s*=\s*"0;\s*URL=https://(?P<gm>[A-Za-z0-9_.-]+)(?::(?P<gm_port>\d+))?"',
+            body,
+            re.IGNORECASE,
+        )
+        if not match:
+            logger.info('No meta refresh URL found in response.')
+            return None
+
+        gm_port = match.group('gm_port')
+        return (match.group('gm'), int(gm_port) if gm_port else None)
+
+    def _replace_url_host(self, original_url: str, new_host: str, new_port=None):
+        """
+        Replace host (and optional port) in original_url while preserving
+        scheme, path, query, fragment, and userinfo.
+        """
+        parsed_original = urlsplit(original_url)
+        if not parsed_original.hostname:
+            return original_url
+
+        port = parsed_original.port if new_port is None else new_port
+
+        userinfo = ''
+        if parsed_original.username:
+            userinfo = parsed_original.username
+            if parsed_original.password:
+                userinfo += f':{parsed_original.password}'
+            userinfo += '@'
+
+        netloc = f'{userinfo}{new_host}'
+        if port is not None:
+            netloc += f':{port}'
+
+        replaced = urlunsplit(
+            (
+                parsed_original.scheme,
+                netloc,
+                parsed_original.path,
+                parsed_original.query,
+                parsed_original.fragment,
+            )
+        )
+
+        return None if replaced == original_url else replaced
 
     def _build_return_fields(self, return_fields: list = None):
         """
