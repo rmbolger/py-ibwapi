@@ -402,11 +402,8 @@ class Client:
         """
         content_type = response.headers.get('Content-Type', '').lower()
         body = response.text or ''
-        logger.info('Checking for meta refresh in response with Content-Type: %s', content_type)
-        logger.info('Response body: %s', body)
 
         if 'html' not in content_type and '<meta' not in body.lower():
-            logger.info('No HTML content or meta tag found in response; skipping meta refresh check.')
             return None
 
         # Example: CONTENT="0; URL=https://192.0.2.1"
@@ -416,7 +413,6 @@ class Client:
             re.IGNORECASE,
         )
         if not match:
-            logger.info('No meta refresh URL found in response.')
             return None
 
         gm_port = match.group('gm_port')
