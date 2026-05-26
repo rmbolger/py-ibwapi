@@ -63,10 +63,9 @@ class Client:
                 send data before giving up, as a float, or a (connect timeout, read timeout)
                 tuple. Applied to all calls unless overridden per call.
         """
-        wapi_version = wapi_version.lstrip('v')  # Normalize version string
         self._wapi_host = wapi_host
-        self._wapi_version = wapi_version
-        self.base_url = f'https://{wapi_host}/wapi/v{wapi_version}/'
+        self._wapi_version = wapi_version.lstrip('v')  # Normalize version string
+        self._update_base_url()
 
         self.session = requests.Session()
         self.session.auth = auth
@@ -74,9 +73,50 @@ class Client:
         if not tls_verify:
             urllib3.disable_warnings()
 
-        self.log_api_calls = log_api_calls
-        self.raise_on_redirect = raise_on_redirect
+        self.log_api_calls = bool(log_api_calls)
+        self.raise_on_redirect = bool(raise_on_redirect)
         self.timeout = timeout
+
+    def _update_base_url(self):
+        """Rebuild base_url from current host and version settings."""
+        self.base_url = f'https://{self._wapi_host}/wapi/v{self._wapi_version}/'
+
+    @property
+    def wapi_host(self) -> str:
+        """Returns the configured WAPI host."""
+        return self._wapi_host
+
+    @wapi_host.setter
+    def wapi_host(self, value: str):
+        """Sets the WAPI host and updates base_url."""
+        if not value:
+            raise ValueError('wapi_host cannot be empty')
+        self._wapi_host = value
+        self._update_base_url()
+
+    @property
+    def auth(self):
+        """Returns HTTP authentication configured on the session."""
+        return self.session.auth
+
+    @auth.setter
+    def auth(self, value):
+        """Sets HTTP authentication on the session."""
+        self.session.auth = value
+
+    @property
+    def wapi_version(self) -> str:
+        """Returns the configured WAPI version."""
+        return self._wapi_version
+
+    @wapi_version.setter
+    def wapi_version(self, value: str):
+        """Sets the WAPI version and updates base_url."""
+        normalized = value.lstrip('v')
+        if not normalized:
+            raise ValueError('wapi_version cannot be empty')
+        self._wapi_version = normalized
+        self._update_base_url()
 
     @property
     def tls_verify(self) -> bool:
